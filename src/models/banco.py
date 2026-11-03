@@ -5,21 +5,21 @@ class Banco:
     def __init__(self):
         self.contas = []
 
-        def criar_conta(self, nome, cpf, telefone):
-            # Cria o cliente
-            cliente = Cliente(nome, cpf, telefone)
+    def criar_conta(self, nome, cpf, telefone):
+        # Cria o cliente
+        cliente = Cliente(nome, cpf, telefone)
 
-            # Cria a conta vinculada ao cliente
-            conta = Conta(cliente)
+        # Cria a conta vinculada ao cliente
+        conta = Conta(cliente)
 
-            # Adiciona a conta ao banco
-            self.contas.append(conta)
+        # Adiciona a conta ao banco
+        self.contas.append(conta)
 
-            return conta
+        return conta
 
     def buscar_conta(self, numero):
         for conta in self.contas:
-            if conta.numero_conta == numero:
+            if conta.numero == numero:
                 return conta
         
         return None
