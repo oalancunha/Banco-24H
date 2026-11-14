@@ -1,8 +1,10 @@
 import os
 import pickle
+import tkinter as tk  # Import necessário para o Tkinter
 
 from banco import Banco
 from conta import Conta
+from interface import InterfaceBanco24H  # Importa a sua classe de interface
 
 ARQUIVO = "banco.pkl"
 
@@ -27,10 +29,12 @@ def carregar_banco():
 
     # O contador é atributo de classe e não vai no pickle:
     # restaura a partir do maior número de conta existente.
-    Conta.contas_criadas = max(
-        (conta.numero for conta in banco.listar_contas()),
-        default=0,
-    )
+    contas = banco.listar_contas()
+    if contas:
+        Conta.contas_criadas = max(
+            (conta.numero for conta in contas),
+            default=0,
+        )
     return banco
 
 
@@ -39,13 +43,13 @@ def main():
     try:
         banco = carregar_banco()
 
-        # O programa roda aqui
-        print(f"Contas carregadas: {len(banco.listar_contas())}")
-        conta = banco.criar_conta("Ana", "12345678900", "11999999999")
-        conta.depositar(500)
+        # --- INTEGRAÇÃO COM A INTERFACE GRÁFICA ---
+        root = tk.Tk()  # Cria a janela principal do Tkinter
+        app = InterfaceBanco24H(root, banco)  # Instancia a interface passando o banco carregado
+        root.mainloop()  # Inicia o loop de execução da janela
 
     finally:
-        # Executa sempre: fim normal, exceção ou Ctrl+C
+        # Executa sempre: fim normal, exceção ou fechamento da janela
         if banco is not None:
             salvar_banco(banco)
             print("Dados salvos em banco.pkl.")
