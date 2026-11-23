@@ -9,12 +9,12 @@ class Banco:
     # ------------------------------------------------------------------
     # Métodos básicos (usados internamente)
     # ------------------------------------------------------------------
-    def criar_conta(self, nome, cpf, telefone):
+    def criar_conta(self, nome, cpf, telefone, senha):
         # Cria o cliente
         cliente = Cliente(nome, cpf, telefone)
 
-        # Cria a conta vinculada ao cliente
-        conta = Conta(cliente)
+        # Cria a conta vinculada ao cliente (valida a senha)
+        conta = Conta(cliente, senha)
 
         # Adiciona a conta ao banco
         self.contas.append(conta)
@@ -41,9 +41,26 @@ class Banco:
         except (ValueError, TypeError):
             return None
 
-    def cadastrar_cliente_e_criar_conta(self, nome, cpf, tel):
-        conta = self.criar_conta(nome, cpf, tel)
+    def cadastrar_cliente_e_criar_conta(self, nome, cpf, tel, senha):
+        try:
+            conta = self.criar_conta(nome, cpf, tel, senha)
+        except ValueError as erro:
+            return False, str(erro)
         return True, f"Conta criada com sucesso! Número: {conta.numero}"
+
+    def autenticar(self, numero, senha):
+        """Valida número da conta + senha. Devolve (conta, mensagem)."""
+        conta = self._obter_conta(numero)
+
+        if conta is not None and not conta.possui_senha():
+            return None, "Esta conta ainda não possui senha. Procure o gerente."
+
+        # Mensagem única para conta inexistente OU senha errada, para não
+        # revelar quais números de conta existem.
+        if conta is None or not conta.verificar_senha(senha):
+            return None, "Número da conta ou senha inválidos."
+
+        return conta, ""
 
     def consultar_saldo(self, numero):
         conta = self._obter_conta(numero)
@@ -75,7 +92,7 @@ class Banco:
         conta_origem = self._obter_conta(origem)
         conta_destino = self._obter_conta(destino)
         if conta_origem is None or conta_destino is None:
-            return False, "Conta de origem ou destino não encontrada."
+            return False, "Conta de destino não encontrada."
         try:
             conta_origem.transferir(conta_destino, valor, modalidade)
         except ValueError as erro:
