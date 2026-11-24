@@ -1,4 +1,5 @@
 import tkinter as tk
+from datetime import datetime
 from tkinter import ttk, messagebox
 
 COR_FUNDO = "#f4f6f9"
@@ -86,7 +87,7 @@ class InterfaceBanco24H:
         # Telas do cliente logado (nenhuma pede número de conta)
         self._criar_aba_operacoes()     # Consultar Saldo, Depósito, Saque
         self._criar_aba_transferencia() # Realizar Transferência
-        self._criar_aba_extrato()       # Exibir Extrato
+        self._criar_aba_conta()         # Dados cadastrais, saldo e acesso ao extrato
 
     # --------------------------------------------------------------------------
     # 0. LOGIN
@@ -188,22 +189,100 @@ class InterfaceBanco24H:
         tk.Button(box, text="Confirmar Transferência", bg="#dd6b20", fg="white", font=("Helvetica", 10, "bold"), command=self._exec_transferir).grid(row=3, column=0, columnspan=2, pady=20)
 
     # --------------------------------------------------------------------------
-    # 4. PERFIL CLIENTE: EXIBIR EXTRATO
+    # 4. PERFIL CLIENTE: CONTA
     # --------------------------------------------------------------------------
-    def _criar_aba_extrato(self):
+    def _criar_aba_conta(self):
         aba = ttk.Frame(self.notebook)
-        self.notebook.add(aba, text=" Extrato ")
+        self.notebook.add(aba, text=" Conta ")
 
-        box = tk.Frame(aba, bg="white", padx=10, pady=10)
+        box = tk.LabelFrame(
+            aba, text=" Informações da Conta ", font=("Helvetica", 11, "bold"),
+            bg="white", padx=25, pady=20
+        )
         box.pack(fill="both", expand=True, padx=15, pady=15)
 
-        top = tk.Frame(box, bg="white")
-        top.pack(fill="x", pady=5)
+        conta = self.conta_logada
+        dados = (
+            ("Titular:", conta.titular.nome),
+            ("CPF:", conta.titular.cpf),
+            ("Telefone:", conta.titular.telefone),
+            ("Número da conta:", str(conta.numero)),
+        )
+        for linha, (rotulo, valor) in enumerate(dados):
+            tk.Label(
+                box, text=rotulo, bg="white",
+                font=("Helvetica", 10, "bold")
+            ).grid(row=linha, column=0, sticky="w", pady=9, padx=(0, 15))
+            tk.Label(
+                box, text=valor, bg="white", font=("Helvetica", 10)
+            ).grid(row=linha, column=1, sticky="w", pady=9)
 
-        tk.Button(top, text="Exibir Extrato", bg="#2b6cb0", fg="white", font=("Helvetica", 9, "bold"), command=self._exec_exibir_extrato).pack(side="left", padx=5)
+        tk.Label(
+            box, text="Saldo disponível:", bg="white",
+            font=("Helvetica", 11, "bold")
+        ).grid(row=4, column=0, sticky="w", pady=(20, 10), padx=(0, 15))
 
-        self.txt_extrato = tk.Text(box, height=15, width=60, font=("Consolas", 10))
-        self.txt_extrato.pack(fill="both", expand=True, pady=10)
+        self.lbl_saldo_conta = tk.Label(
+            box, text="", bg="white", fg="#2f855a",
+            font=("Helvetica", 15, "bold")
+        )
+        self.lbl_saldo_conta.grid(row=4, column=1, sticky="w", pady=(20, 10))
+        self._atualizar_saldo_conta()
+
+        tk.Button(
+            box, text="Extrato", bg="#2b6cb0", fg="white",
+            font=("Helvetica", 10, "bold"), width=16,
+            command=self._abrir_tela_extrato
+        ).grid(row=5, column=0, columnspan=2, pady=25)
+
+    def _atualizar_saldo_conta(self):
+        if hasattr(self, "lbl_saldo_conta") and self.conta_logada is not None:
+            self.lbl_saldo_conta.config(
+                text=f"R$ {self.conta_logada.consultar_saldo():.2f}"
+            )
+
+    def _abrir_tela_extrato(self):
+        janela = tk.Toplevel(self.root)
+        janela.title("Extrato da Conta")
+        janela.geometry("650x450")
+        janela.configure(bg=COR_FUNDO)
+        janela.transient(self.root)
+
+        box = tk.Frame(janela, bg="white", padx=15, pady=15)
+        box.pack(fill="both", expand=True, padx=15, pady=15)
+
+        tk.Label(
+            box, text="Extrato da Conta", bg="white",
+            font=("Helvetica", 13, "bold")
+        ).pack(anchor="w", pady=(0, 10))
+
+        area = tk.Frame(box, bg="white")
+        area.pack(fill="both", expand=True)
+
+        scrollbar = tk.Scrollbar(area)
+        scrollbar.pack(side="right", fill="y")
+
+        texto = tk.Text(
+            area, font=("Consolas", 10), wrap="none",
+            yscrollcommand=scrollbar.set, state="normal"
+        )
+        texto.pack(side="left", fill="both", expand=True)
+        scrollbar.config(command=texto.yview)
+
+        # Mais recente primeiro (ordem cronológica decrescente).
+        movimentacoes = sorted(
+            self.conta_logada.consultar_extrato(),
+            key=lambda mov: datetime.strptime(
+                mov.data_hora, "%d/%m/%Y %H:%M:%S"
+            ),
+            reverse=True
+        )
+
+        if movimentacoes:
+            texto.insert("1.0", "\n".join(str(mov) for mov in movimentacoes))
+        else:
+            texto.insert("1.0", "Nenhuma movimentação.")
+        texto.config(state="disabled")
 
     # ==========================================================================
     # LÓGICA DE VALIDAÇÃO E CHAMADAS AO BACKEND
@@ -281,6 +360,7 @@ class InterfaceBanco24H:
         if sucesso:
             messagebox.showinfo("Sucesso", msg)
             self.ent_valor_op.delete(0, tk.END)
+            self._atualizar_saldo_conta()
         else:
             messagebox.showerror("Erro", msg)
 
@@ -296,6 +376,7 @@ class InterfaceBanco24H:
         if sucesso:
             messagebox.showinfo("Sucesso", msg) # 'Saque Autorizado'
             self.ent_valor_op.delete(0, tk.END)
+            self._atualizar_saldo_conta()
         else:
             messagebox.showerror("Erro de Saque", msg)
 
@@ -312,6 +393,7 @@ class InterfaceBanco24H:
         if sucesso:
             messagebox.showinfo("Sucesso", msg)
             self.ent_tr_valor.delete(0, tk.END)
+            self._atualizar_saldo_conta()
         else:
             messagebox.showerror("Erro", msg)
 
