@@ -17,7 +17,7 @@ class Conta:
 
         Conta.contas_criadas += 1
 
-        self.numero = Conta.contas_criadas
+        self.ID = Conta.contas_criadas
         self.titular = titular
         self.saldo = Decimal(str(saldo))
         self.movimentacoes = []
@@ -60,9 +60,15 @@ class Conta:
         )
 
     @staticmethod
-    def _validar_valor(valor):
+    def _validar_valor(valor_informado):
+        """Único ponto de conversão do valor: recebe o que foi informado
+        (texto como "10,50", int, float ou Decimal) e devolve um Decimal
+        já validado (finito e positivo)."""
+        if isinstance(valor_informado, str):
+            valor_informado = valor_informado.strip().replace(",", ".")
+
         try:
-            valor = Decimal(str(valor))
+            valor = Decimal(str(valor_informado))
         except (InvalidOperation, ValueError, TypeError):
             raise ValueError("Valor inválido.")
 
@@ -71,8 +77,8 @@ class Conta:
 
         return valor
 
-    def depositar(self, valor):
-        valor = self._validar_valor(valor)
+    def depositar(self, valor_informado):
+        valor = self._validar_valor(valor_informado)
 
         self.saldo += valor
 
@@ -80,8 +86,8 @@ class Conta:
             Movimentacao("Depósito", valor)
         )
 
-    def sacar(self, valor):
-        valor = self._validar_valor(valor)
+    def sacar(self, valor_informado):
+        valor = self._validar_valor(valor_informado)
 
         if valor > self.saldo:
             raise ValueError("Saldo insuficiente.")
@@ -91,8 +97,8 @@ class Conta:
             Movimentacao("Saque", valor)
         )
 
-    def transferir(self, destino, valor, modelo):
-        valor = self._validar_valor(valor)
+    def transferir(self, destino, valor_informado, modelo, transferencia_id=None):
+        valor = self._validar_valor(valor_informado)
         
         if not isinstance(destino, Conta):
             raise ValueError("Conta de destino inválida.")
@@ -112,10 +118,16 @@ class Conta:
         destino.saldo += valor
 
         self.movimentacoes.append(
-            Movimentacao(f"Envio {modalidade}", valor)
+            Movimentacao(
+                f"Envio {modalidade}", valor, transferencia_id,
+                self.ID, self.titular.nome, destino.ID, destino.titular.nome
+            )
         )
         destino.movimentacoes.append(
-            Movimentacao(f"Recebido {modalidade}", valor)
+            Movimentacao(
+                f"Recebido {modalidade}", valor, transferencia_id,
+                destino.ID, destino.titular.nome, self.ID, self.titular.nome
+            )
         )
         return True
     
