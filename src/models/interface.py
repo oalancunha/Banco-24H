@@ -4,6 +4,8 @@ from tkinter import ttk, messagebox
 
 COR_FUNDO = "#f4f6f9"
 COR_HEADER = "#102a43"
+COR_ABA_ATIVA = "#bab5ab"    # cinza
+COR_ABA_INATIVA = "#dcdad5"  # claro
 
 
 class InterfaceBanco24H:
@@ -25,6 +27,12 @@ class InterfaceBanco24H:
         self.style.configure("TFrame", background=COR_FUNDO)
         self.style.configure("TNotebook", background=COR_FUNDO)
         self.style.configure("TNotebook.Tab", font=("Helvetica", 10, "bold"), padding=[10, 5])
+        # Cores das abas: a aba aberta fica cinza e as inativas ficam claras
+        # (o inverso do padrão do tema "clam")
+        self.style.map(
+            "TNotebook.Tab",
+            background=[("selected", COR_ABA_ATIVA), ("!selected", COR_ABA_INATIVA)],
+        )
 
         # Cabeçalho Principal
         header = tk.Frame(self.root, bg=COR_HEADER, height=60)
